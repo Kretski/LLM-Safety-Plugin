@@ -98,24 +98,27 @@ float MicroSafeController::apply(float ai, float sensor) {
 
 ## Quick start
 
-**Embedded (Arduino / STM32):**
+## Quick start
+
+**Embedded (Arduino / STM32), full bridge with configuration:**
+
+```cpp
 #include "SafetyBridge.h"
 
 SafetyBridge bridge;
 
 void setup() {
     MicroSafeRL::Config cfg;
-    cfg.min_limit    = -1.5f;    // твоите реални граници на изпълнителния механизъм
+    cfg.min_limit    = -1.5f;   // actual actuator bounds for your hardware
     cfg.max_limit    =  1.5f;
-    cfg.sensor_scale =  0.10f;   // характерна големина на сензорния сигнал
+    cfg.sensor_scale =  0.10f;  // characteristic magnitude of your sensor signal
 
     if (!bridge.configure(cfg)) {
-        // конфигурацията е отхвърлена — НЕ пускай изпълнителния механизъм
-        while (true) { /* fail-stop */ }
+        while (true) { /* invalid config — fail-stop, do not arm the actuator */ }
     }
-    bridge.set_min_gain(0.25f);  // при максимална нестабилност минава 25% от командата
+    bridge.set_min_gain(0.25f); // 25% of the command passes through at max penalty
 
-    bridge.init(read_sensor());  // инициализирай с реален отчет, не с 0
+    bridge.init(read_sensor()); // seed with a real reading, not zero
 }
 
 void loop() {
@@ -125,25 +128,31 @@ void loop() {
     SafetyResult r = bridge.process(ai_cmd, sensor);
     actuator_set(r.safe_action);
 }
+```
 
+**Core only, no bridge:**
+
+```cpp
 #include "MicroSafeRL.h"
 
-MicroSafeRL safety;   // defaults; конфигурирай в setup() както по-горе
+MicroSafeRL safety;  // defaults; call safety.configure(cfg) before use
 
 void loop() {
     float safe = safety.apply_safe_control(get_ai_action(), read_sensor());
     actuator_set(safe);
 }
-**Python + LLM (Ollama):**
-
-```bash
-python python/microsafe_llm_plugin.py
 ```
 
-Closed-loop pipeline:
-```
-User command → LLM (gemma2 / llama3) → MicroSafeRL → CBF → Actuator → feedback → LLM
-```
+> On plants where zero command is unsafe (anything that falls, stalls, or
+> drops when released), set a fallback each cycle instead of relying on the
+> default:
+> ```cpp
+> bridge.set_fallback(backup_controller_output());
+> ```
+> See Limitations in the core README — the default `fallback_action = 0`
+> loses roughly 30 percentage points of survival on an open-loop-unstable
+> plant relative to a proper backup fallback, per the reaction-wheel pendulum
+> benchmark.
 
 **Gymnasium wrapper:**
 
