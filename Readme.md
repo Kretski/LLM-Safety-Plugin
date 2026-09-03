@@ -74,19 +74,6 @@ float MicroSafeController::apply(float ai, float sensor) {
 
 ## Benchmark results
 
-Tested against Kalman filter and PLC baselines:
-
-| Metric | MicroSafe-RL | Kalman | PLC |
-|---|---|---|---|
-| Detection margin (mean) | **19.2** | 11.0 | 8.1 |
-| ROC — TPR | **1.00** | 1.00 | 1.00 |
-| ROC — FPR | **≈ 0** | ≈ 0 | ≈ 0 |
-| Latency | **535 ns** | ms-range | ms-range |
-| RAM footprint | **24 bytes** | KB-range | KB-range |
-
-Noise stress test: raw spike +6.5 → clipped output ±1.468, zero hardware impact.
-
-Full benchmark figures: [`/figures`](./figures)
 
 ---
 
