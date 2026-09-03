@@ -99,20 +99,41 @@ float MicroSafeController::apply(float ai, float sensor) {
 ## Quick start
 
 **Embedded (Arduino / STM32):**
+#include "SafetyBridge.h"
 
-```cpp
-#include "MicroSafeController.h"
+SafetyBridge bridge;
 
-MicroSafeController ctrl;
+void setup() {
+    MicroSafeRL::Config cfg;
+    cfg.min_limit    = -1.5f;    // твоите реални граници на изпълнителния механизъм
+    cfg.max_limit    =  1.5f;
+    cfg.sensor_scale =  0.10f;   // характерна големина на сензорния сигнал
+
+    if (!bridge.configure(cfg)) {
+        // конфигурацията е отхвърлена — НЕ пускай изпълнителния механизъм
+        while (true) { /* fail-stop */ }
+    }
+    bridge.set_min_gain(0.25f);  // при максимална нестабилност минава 25% от командата
+
+    bridge.init(read_sensor());  // инициализирай с реален отчет, не с 0
+}
 
 void loop() {
     float ai_cmd = get_ai_action();
     float sensor = read_sensor();
-    float safe   = ctrl.apply(ai_cmd, sensor);
-    actuator.set(safe);
-}
-```
 
+    SafetyResult r = bridge.process(ai_cmd, sensor);
+    actuator_set(r.safe_action);
+}
+
+#include "MicroSafeRL.h"
+
+MicroSafeRL safety;   // defaults; конфигурирай в setup() както по-горе
+
+void loop() {
+    float safe = safety.apply_safe_control(get_ai_action(), read_sensor());
+    actuator_set(safe);
+}
 **Python + LLM (Ollama):**
 
 ```bash
